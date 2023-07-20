@@ -13,12 +13,6 @@ public class LoginSteps extends BaseClass {
         Assertions.assertEquals("Login Form", driver.getTitle());
     }
 
-//    //@When("User enters {string} and {string}")
-//    @When("User enters {string} and {string}")
-//    public void enterCreds(String username, String password) {
-//        driver.findElement(By.id("username")).sendKeys(username);
-//        driver.findElement(By.id("password")).sendKeys(password);
-//        driver.findElement(By.xpath("//button[@type='submit']")).click();
 
 
     @When("Verify the confirmation message")
