@@ -1,74 +1,84 @@
 package activities;
 
-import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.builder.ResponseBuilder;
-import io.restassured.builder.ResponseSpecBuilder;
-import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
-import io.restassured.specification.ResponseSpecification;
-import jdk.jfr.ContentType;
-import org.testng.annotations.BeforeClass;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+
 import org.testng.annotations.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.CoreMatchers.equalTo;
 
-public class Activity1 {
-    RequestSpecification requestSpec;
-    ResponseSpecification responseSpec;
-    int petId;
 
-    @BeforeClass
-    public void setUp() {
-        //Request Specification
-        requestSpec = new RequestSpecBuilder()
-                .setBaseUri("https://petstore.swagger.io/v2/pet")
-                .addHeader("Content-Type", "application/json")
-                .build();
-
-        //Response Specification
-        responseSpec = new ResponseSpecBuilder()
-                .expectStatusCode(200)
-                .expectResponseTime(lessThanOrEqualTo(3000L))
-                .expectBody("status", equalTo("alive"))
-                .build();
-    }
+public class Activity2 {
+    // Set base URL
+    final static String ROOT_URI = "https://petstore.swagger.io/v2/user";
 
     @Test(priority = 1)
-    public void postRequestTest() {
-        Map<String, Object> reqBody = new HashMap<>();
-        reqBody.put("id", 77232);
-        reqBody.put("name", "Riley");
-        reqBody.put("status", "alive");
+    public void addNewUserFromFile() throws IOException {
+        // Import JSON file
+        FileInputStream inputJSON = new FileInputStream("src/test/java/activities/userinfo.json");
+        // Read JSON file as String
+        String reqBody = new String(inputJSON.readAllBytes());
 
-        //Send POST Request
-        Response response = given().spec(requestSpec).body(reqBody).log().all().when().post();
+        Response response =
+                given().contentType(ContentType.JSON) // Set headers
+                        .body(reqBody) // Pass request body from file
+                        .when().post(ROOT_URI); // Send POST request
 
-        //Extract id from response
-        petId = response.then().extract().path("id");
-        System.out.println(petId);
-        //Assertions
-        response.then().spec(responseSpec).body("name", equalTo("Riley"));
+        inputJSON.close();
+
+        // Assertion
+        response.then().body("code", equalTo(200));
+        response.then().body("message", equalTo("9901"));
     }
 
     @Test(priority = 2)
-    public void getRequestTest() {
-        given().spec(requestSpec).pathParam("petId", petId).log().all()
-                .when().get("/{petId}")
-                .then().spec(responseSpec).body("name", equalTo("Riley"));
+    public void getUserInfo() {
+        // Import JSON file to write to
+        File outputJSON = new File("src/test/java/activities/userGETResponse.json");
+
+        Response response =
+                given().contentType(ContentType.JSON) // Set headers
+                        .pathParam("username", "justinc") // Pass request body from file
+                        .when().get(ROOT_URI + "/{username}"); // Send POST request
+
+        // Get response body
+        String resBody = response.getBody().asPrettyString();
+
+        try {
+            // Create JSON file
+            outputJSON.createNewFile();
+            // Write response body to external file
+            FileWriter writer = new FileWriter(outputJSON.getPath());
+            writer.write(resBody);
+            writer.close();
+        } catch (IOException excp) {
+            excp.printStackTrace();
+        }
+
+        // Assertion
+        response.then().body("id", equalTo(9901));
+        response.then().body("username", equalTo("justinc"));
+        response.then().body("firstName", equalTo("Justin"));
+        response.then().body("lastName", equalTo("Case"));
+        response.then().body("email", equalTo("justincase@mail.com"));
+        response.then().body("password", equalTo("password123"));
+        response.then().body("phone", equalTo("9812763450"));
     }
 
     @Test(priority = 3)
-    public void deleteRequestTest() {
-        //Send GET Request
-        given().spec(requestSpec).pathParam("petId", petId)
-                .when().delete("/{petId}")
-                .then()
-                .statusCode(200).time(lessThanOrEqualTo(3000L))
-                .body("message", equalTo("" + petId));
+    public void deleteUser() throws IOException {
+        Response response =
+                given().contentType(ContentType.JSON) // Set headers
+                        .pathParam("username", "justinc") // Add path parameter
+                        .when().delete(ROOT_URI + "/{username}"); // Send POST request
+
+        // Assertion
+        response.then().body("code", equalTo(200));
+        response.then().body("message", equalTo("justinc"));
     }
 }
